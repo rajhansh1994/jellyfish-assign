@@ -1,5 +1,9 @@
 resource "aws_vpc" "jellyfish" {
   cidr_block = "10.0.0.0/16"
+
+    tags = {
+    Name = "jellyfish"
+  }
 }
 
 resource "aws_launch_configuration" "jellyfish" {
@@ -9,7 +13,6 @@ resource "aws_launch_configuration" "jellyfish" {
   key_name                    = "jellyfish.pem"
   enable_monitoring           = "true"
   associate_public_ip_address = "true"
-  vpc_classic_link_id         = aws_vpc.jellyfish.id
 
   user_data = "${file("web_server.sh")}"
 
