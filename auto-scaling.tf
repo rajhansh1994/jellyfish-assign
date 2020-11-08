@@ -1,27 +1,51 @@
-resource "aws_autoscaling_policy" "jellyfish" {
-  name                   = "jellyfish"
-  scaling_adjustment     = 4
-  adjustment_type        = "ChangeInCapacity"
-  cooldown               = 300
-  autoscaling_group_name = aws_autoscaling_group.jellyfish.name
-}
+/*Here we have the following configuration:
+
+There will be minimum one instance to serve the traffic
+Auto Scaling Group will be launched with 2 instances and put each of them in separate Availability Zones in different Subnets
+Auto Scaling Group will get information about instance availability from the ELB
+We’re set up collection for some Cloud Watch metrics to monitor our Auto Scaling Group state
+Each instance launched from this Auto Scaling Group will have Name tag set to jellyfish*/
+
+
 
 resource "aws_autoscaling_group" "jellyfish" {
-  availability_zones        = ["us-east-1a"]
-  name                      = "jellyfish-asg"
-  max_size                  = 5
-  min_size                  = 1
-  health_check_grace_period = 300
-  health_check_type         = "ELB"
-  force_delete              = true
-  target_group_arns         = aws_lb_target_group.jellyfish.arn
-  launch_configuration      = aws_launch_configuration.jellyfish.name
-}
+  name = "${aws_launch_configuration.jellyfish.name}-asg"
 
-resource "aws_lb_target_group" "jellyfish" {
-  name     = "jellyfish-lb-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.jellyfish.id
-}
+  min_size         = 1
+  desired_capacity = 2
+  max_size         = 4
 
+  health_check_type = "ELB"
+  load_balancers = [
+    aws_elb.jellyfish_elb.id
+  ]
+
+  launch_configuration = aws_launch_configuration.jellyfish.name
+
+  enabled_metrics = [
+    "GroupMinSize",
+    "GroupMaxSize",
+    "GroupDesiredCapacity",
+    "GroupInServiceInstances",
+    "GroupTotalInstances"
+  ]
+
+  metrics_granularity = "1Minute"
+
+  vpc_zone_identifier = [
+    aws_subnet.public_us_east_1a.id,
+    aws_subnet.public_us_east_1b.id
+  ]
+
+  # Required to redeploy without an outage.
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "jellyfish"
+    propagate_at_launch = true
+  }
+
+}
