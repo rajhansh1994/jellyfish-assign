@@ -8,7 +8,7 @@ resource "aws_launch_configuration" "jellyfish" {
   security_groups             = [aws_security_group.allow_http.id]
   associate_public_ip_address = true
   enable_monitoring           = true
-  user_data                   = "${file("web_server.sh")}"
+  user_data                   = file("web_server.sh")
 
   lifecycle {
     create_before_destroy = true
